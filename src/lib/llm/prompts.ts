@@ -2,6 +2,29 @@ import type { KnowledgeType, SearchResult } from "@/types";
 import type { ChatMessage } from "./client";
 
 /**
+ * Check if source diversity requirement is met
+ * Returns { met: boolean, sourcesUsed: string[], warning?: string }
+ */
+export function checkSourceDiversity(
+  sourceCounts: Record<string, number>
+): { met: boolean; sourcesUsed: string[]; count: number; warning?: string } {
+  const sourcesUsed = Object.keys(sourceCounts);
+  const count = sourcesUsed.length;
+  const MIN_SOURCES = 3;
+
+  if (count >= MIN_SOURCES) {
+    return { met: true, sourcesUsed, count };
+  }
+
+  return {
+    met: false,
+    sourcesUsed,
+    count,
+    warning: `当前仅使用 ${count} 个来源（${sourcesUsed.join(", ")}），建议至少使用 ${MIN_SOURCES} 个来源以确保信息多样性`,
+  };
+}
+
+/**
  * Core Wiki Architect System Prompt
  * Based on wiki_prompt.md requirements
  */
@@ -225,11 +248,38 @@ Respond with ONLY the JSON array, no other text.`,
 }
 
 /**
+ * Source diversity requirements constant
+ */
+const SOURCE_DIVERSITY_REQUIREMENT = `
+# 信息来源多样性要求（中等约束）
+
+## 必须满足的条件
+生成 Wiki 时必须使用以下至少 **3 个** 信息来源类型：
+1. **通用搜索 (Tavily/general)** - 提供广泛的知识覆盖和最新信息
+2. **学术论文 (Semantic Scholar/academic)** - 提供权威的学术观点和研究成果
+3. **预印本论文 (arXiv/preprint)** - 提供前沿研究和最新进展
+4. **LLM 知识库 (llm)** - 补充常识性知识和填补信息空白
+
+## 例外情况
+仅在以下情况允许使用少于 3 个来源：
+- 某个来源确实无法搜到相关信息（如非常小众的主题）
+- 某个来源 API 不可用或超时
+- 主题本身不适用于某种来源（如纯概念不适用于 arXiv）
+
+## 检查清单
+生成内容前必须确认：
+- [ ] 是否使用了至少 3 种来源？
+- [ ] 是否平衡了各来源的使用比例？
+- [ ] 是否在来源不足时用 LLM 知识进行了补充？
+- [ ] 是否在内容中标注了信息来源？`;
+
+/**
  * Identifies blind spots in search results and supplements with LLM knowledge.
  */
 export function knowledgeFusion(
   topic: string,
-  filteredResults: SearchResult[]
+  filteredResults: SearchResult[],
+  sourceCounts?: Record<string, number>
 ): ChatMessage[] {
   const resultSummary = filteredResults
     .map(
@@ -238,10 +288,19 @@ export function knowledgeFusion(
     )
     .join("\n\n");
 
+  // Build source diversity info
+  const sourceInfo = sourceCounts 
+    ? `\n\n## 当前搜索来源统计\n${Object.entries(sourceCounts)
+        .map(([type, count]) => `- ${type}: ${count} 条结果`)
+        .join("\n")}\n\n来源数量: ${Object.keys(sourceCounts).length}/4`
+    : "";
+
   return [
     {
       role: "system",
       content: `You are a knowledge synthesis expert. Given a topic and filtered search results, identify what information is MISSING and supplement it with your own knowledge.
+
+${SOURCE_DIVERSITY_REQUIREMENT}
 
 Focus especially on identifying gaps in:
 1. Mathematical derivations or proofs
@@ -255,15 +314,21 @@ Focus especially on identifying gaps in:
 
 Respond with a JSON object:
 {
-  "supplement": "Your supplementary knowledge in markdown format. Mark search-sourced info as [SEARCH] and your own knowledge as [LLM].",
-  "blindAreas": ["area1 that was missing", "area2 that was missing"]
+  "supplement": "Your supplementary knowledge in markdown format. Mark search-sourced info as [SEARCH] and your own knowledge as [LLM]. Also note which SOURCE TYPE each piece of info comes from.",
+  "blindAreas": ["area1 that was missing", "area2 that was missing"],
+  "sourceDiversityCheck": "Brief statement confirming at least 3 sources are used or explaining why fewer sources are acceptable"
 }
 
 Provide substantive, accurate content — not just descriptions of what's missing.`,
     },
     {
       role: "user",
-      content: `Topic: "${topic}"\n\nCurrent search results:\n${resultSummary}\n\nWhat information is missing? Supplement with your knowledge.`,
+      content: `Topic: "${topic}"${sourceInfo}
+
+Current search results:
+${resultSummary}
+
+What information is missing? Supplement with your knowledge. Remember to check source diversity requirements.`,
     },
   ];
 }
@@ -517,6 +582,7 @@ ${keyPoints.map((p, i) => `${i + 1}. ${p}`).join("\n")}
 5. 遵循费曼学习法：术语即解释，概念即类比
 6. 遵循第一性原理：追溯本质，讲清原因
 7. **严格遵守 Markdown 格式规范**，确保公式、表格、代码块正确渲染
+8. **信息来源多样性**：确保内容引用了至少 3 种不同来源（通用搜索、学术论文、预印本、LLM知识库）
 
 在内容末尾，建议1-2个图表（可选）：
 CHART_JSON: {"charts":[{"type":"mermaid|infographic|table","description":"what the chart shows"}]}`,

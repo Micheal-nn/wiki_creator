@@ -43,9 +43,27 @@ export async function generateWiki(
     onProgress?.({ stage: "searching", message: "正在搜索相关信息...", progress: 5 });
 
     // Run aggregated search (pass both Tavily and GLM5 keys)
-    const searchResultList = await aggregatedSearch(topic, tavilyApiKey, apiKey);
+    const searchResult = await aggregatedSearch(topic, tavilyApiKey, apiKey);
+    const searchResultList = searchResult.results;
 
-    onProgress?.({ stage: "searching", message: `搜索完成，找到 ${searchResultList.length} 条结果`, progress: 15 });
+    // Log source diversity info
+    console.log("[Generator] Sources used:", searchResult.sourcesUsed);
+    console.log("[Generator] Source counts:", searchResult.sourceCounts);
+    
+    if (searchResult.diversityWarning) {
+      console.warn("[Generator]", searchResult.diversityWarning);
+      onProgress?.({ 
+        stage: "searching", 
+        message: `搜索完成（${searchResult.sourcesUsed.length}/4 源可用）`, 
+        progress: 15 
+      });
+    } else {
+      onProgress?.({ 
+        stage: "searching", 
+        message: `搜索完成，从 ${searchResult.sourcesUsed.length} 个来源找到 ${searchResultList.length} 条结果`, 
+        progress: 15 
+      });
+    }
 
     // Save search results to DB
     for (const result of searchResultList) {
@@ -65,7 +83,7 @@ export async function generateWiki(
     // Run LLM orchestration pipeline
     const orchestrator = new Orchestrator(apiKey, onProgress);
     const { materialPackage, sections, knowledgeType, header, footer } =
-      await orchestrator.orchestrate(topic, searchResultList);
+      await orchestrator.orchestrate(topic, searchResultList, searchResult.sourceCounts);
 
     // Save sections to DB
     for (let i = 0; i < sections.length; i++) {

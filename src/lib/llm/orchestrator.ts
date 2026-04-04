@@ -147,12 +147,13 @@ export class Orchestrator {
 
   async fuseKnowledge(
     topic: string,
-    filteredResults: SearchResult[]
+    filteredResults: SearchResult[],
+    sourceCounts?: Record<string, number>
   ): Promise<MaterialPackage> {
     this.progress("fusing", "融合 LLM 知识...", 35);
     const response = await chatCompletion(
       this.apiKey,
-      prompts.knowledgeFusion(topic, filteredResults)
+      prompts.knowledgeFusion(topic, filteredResults, sourceCounts)
     );
 
     const fusionResult = parseJsonResponse<{
@@ -286,7 +287,8 @@ export class Orchestrator {
 
   async orchestrate(
     topic: string,
-    searchResults: SearchResult[]
+    searchResults: SearchResult[],
+    sourceCounts?: Record<string, number>
   ): Promise<{
     materialPackage: MaterialPackage;
     sections: WikiSection[];
@@ -297,8 +299,8 @@ export class Orchestrator {
     // 1. Filter results
     const filtered = await this.filterResults(topic, searchResults);
 
-    // 2. Fuse knowledge
-    const materialPackage = await this.fuseKnowledge(topic, filtered);
+    // 2. Fuse knowledge (pass source counts for diversity check)
+    const materialPackage = await this.fuseKnowledge(topic, filtered, sourceCounts);
 
     // 3. Classify
     const knowledgeType = await this.classifyKnowledge(topic);
