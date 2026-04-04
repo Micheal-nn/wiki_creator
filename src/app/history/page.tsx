@@ -118,17 +118,14 @@ export default function HistoryPage() {
                     open={deleteId === wiki.id}
                     onOpenChange={(open) => !open && setDeleteId(null)}
                   >
-                    <DialogTrigger>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteId(wiki.id);
-                        }}
-                      >
-                        删除
-                      </Button>
+                    <DialogTrigger
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium h-8 px-3 rounded-md hover:bg-gray-100 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteId(wiki.id);
+                      }}
+                    >
+                      删除
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>

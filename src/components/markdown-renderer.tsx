@@ -1,12 +1,171 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import "katex/dist/katex.min.css";
+
+// Mermaid initialization (client-side only)
+let mermaidInitialized = false;
+
+async function initMermaid() {
+  if (mermaidInitialized || typeof window === "undefined") return;
+  const mermaid = (await import("mermaid")).default;
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: "default",
+    securityLevel: "loose",
+    fontFamily: "inherit",
+  });
+  mermaidInitialized = true;
+}
+
+// Mermaid diagram block component
+function MermaidBlock({ code }: { code: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [svg, setSvg] = useState<string>("");
+  const [error, setError] = useState(false);
+
+  // Sanitize mermaid code
+  const sanitizeMermaidCode = (rawCode: string): string => {
+    let sanitized = rawCode;
+    
+    // Fix common issues:
+    // 1. Ensure proper newlines between statements
+    sanitized = sanitized.replace(/\s*-->\s*/g, " --> ");
+    sanitized = sanitized.replace(/\s*---\s*/g, " --- ");
+    
+    // 2. Escape quotes inside node labels
+    sanitized = sanitized.replace(/\[([^\]]*)"/g, '[$1\\"');
+    
+    // 3. Remove trailing whitespace on lines
+    sanitized = sanitized.split("\n").map(line => line.trimEnd()).join("\n");
+    
+    return sanitized;
+  };
+
+  useEffect(() => {
+    async function renderMermaid() {
+      try {
+        await initMermaid();
+        const mermaid = (await import("mermaid")).default;
+        const sanitizedCode = sanitizeMermaidCode(code);
+        const id = `mermaid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const { svg } = await mermaid.render(id, sanitizedCode);
+        setSvg(svg);
+        setError(false);
+      } catch (err) {
+        console.error("Mermaid render error:", err);
+        setError(true);
+      }
+    }
+    renderMermaid();
+  }, [code]);
+
+  if (error) {
+    // Show raw code block instead of error message for better UX
+    return (
+      <pre className="bg-gray-100 p-4 rounded-lg text-sm overflow-x-auto my-4">
+        <code className="text-gray-800">{code}</code>
+      </pre>
+    );
+  }
+
+  if (!svg) {
+    return (
+      <div className="my-4 p-8 bg-gray-50 rounded-lg text-center animate-pulse">
+        <span className="text-gray-400">📊 正在渲染图表...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="my-4 flex justify-center overflow-x-auto bg-white p-4 rounded-lg border"
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
+}
+
+// AI Image placeholder component
+let globalImageIndex = 0;
+
+function AIImagePlaceholder({ description }: { description: string }) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [index] = useState(() => globalImageIndex++);
+
+  const loadImage = useCallback(async () => {
+    if (loading || imageUrl) return;
+    setLoading(true);
+    try {
+      // CogView API can take up to 60 seconds
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
+      
+      const res = await fetch("/api/charts/ai-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: description }),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      if (data.success && data.data?.dataUrl) {
+        setImageUrl(data.data.dataUrl);
+      } else {
+        setError(true);
+      }
+    } catch (err) {
+      console.error("[AI Image] Load error:", err);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [description, loading, imageUrl]);
+
+  // Lazy load with stagger
+  useEffect(() => {
+    const timer = setTimeout(loadImage, index * 500);
+    return () => clearTimeout(timer);
+  }, [loadImage, index]);
+
+  if (error) {
+    return (
+      <div className="my-4 p-4 bg-gray-100 rounded-lg text-center text-gray-500 text-sm">
+        [图片加载失败]
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="my-4 p-8 bg-gray-50 rounded-lg text-center animate-pulse">
+        <span className="text-gray-400">🎨 正在生成配图...</span>
+      </div>
+    );
+  }
+
+  if (imageUrl) {
+    return (
+      <div className="my-4 flex justify-center">
+        <img
+          src={imageUrl}
+          alt={description}
+          className="max-w-full h-auto rounded-lg shadow-md"
+        />
+      </div>
+    );
+  }
+
+  return null;
+}
 
 interface MarkdownRendererProps {
   content: string;
@@ -103,6 +262,20 @@ export function MarkdownRenderer({ content, className = "" }: MarkdownRendererPr
           },
           code: ({ className, children, ...props }) => {
             const isInline = !className;
+            const match = /language-(\w+)/.exec(className || "");
+            const language = match ? match[1] : "";
+            
+            // Handle mermaid code blocks
+            if (language === "mermaid") {
+              const code = String(children).replace(/\n$/, "");
+              return <MermaidBlock code={code} />;
+            }
+            
+            // Handle AI image placeholders
+            if (language === "ai-image") {
+              const description = String(children).replace(/\n$/, "");
+              return <AIImagePlaceholder description={description} />;
+            }
             
             if (isInline) {
               return (

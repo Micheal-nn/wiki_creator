@@ -180,6 +180,80 @@ $$
 - 不要在段落开头使用缩进空格`;
 
 /**
+ * Chart generation guidelines
+ */
+const CHART_GENERATION_GUIDELINES = `
+# 图表生成规则
+
+## 何时生成图表
+仅在以下情况生成图表，避免过度可视化（每个章节最多1-2个图表）：
+1. **流程/步骤** → 使用 Mermaid 流程图
+2. **概念层级/知识结构** → 使用 Mermaid 思维导图
+3. **抽象概念的可视化** → 使用 AI 配图（谨慎使用，仅当纯文字难以表达时）
+
+## Mermaid 语法规范（严格遵守）
+
+### 节点标签规则
+- 节点标签用引号包裹: A["节点名称"]
+- 标签内不要使用特殊符号（引号、换行、方括号）
+- 中文标签必须用引号: A["量子计算基础"]
+
+### 正确示例
+\`\`\`mermaid
+graph TD
+  A["概念介绍"] --> B["核心原理"]
+  B --> C["实际应用"]
+\`\`\`
+
+### 错误示例（避免）
+\`\`\`mermaid
+graph TD
+  A[概念介绍1] --> B[核心原理]  ❌ 缺少引号
+\`\`\`
+
+## 图表类型选择
+
+### Mermaid 流程图 (mermaid)
+用于展示：
+- 执行步骤、工作流程
+- 系统架构、组件关系
+- 决策分支、条件判断
+
+\`\`\`mermaid
+graph TD
+  A["输入数据"] --> B["处理数据"]
+  B --> C{"是否完成?"}
+  C -->|是| D["输出结果"]
+  C -->|否| B
+\`\`\`
+
+### Mermaid 思维导图 (mindmap)
+用于展示：
+- 概念层级
+- 知识结构
+- 多维度分类
+
+\`\`\`mermaid
+mindmap
+  root(("核心概念"))
+    子概念A
+      细节1
+      细节2
+    子概念B
+      细节3
+\`\`\`
+
+### AI 配图 (ai-image)
+用于展示（仅在内容确实需要视觉辅助时使用）：
+- 抽象概念的可视化
+- 物理现象、实验装置
+- 历史场景
+
+## 输出格式
+在内容末尾输出（可选）：
+CHART_JSON: {"charts":[{"type":"mermaid|mindmap|ai-image","description":"图表描述","mermaidCode":"mermaid代码(仅type为mermaid/mindmap时)"}]}`;
+
+/**
  * Classifies a topic into a knowledge type category.
  */
 export function knowledgeTypeClassification(topic: string): ChatMessage[] {
@@ -554,6 +628,8 @@ ${OUTPUT_FORMAT_RULES}
 
 ${MARKDOWN_FORMATTING_RULES}
 
+${CHART_GENERATION_GUIDELINES}
+
 ---
 
 # 当前任务：生成第 ${layer} 层内容
@@ -583,9 +659,10 @@ ${keyPoints.map((p, i) => `${i + 1}. ${p}`).join("\n")}
 6. 遵循第一性原理：追溯本质，讲清原因
 7. **严格遵守 Markdown 格式规范**，确保公式、表格、代码块正确渲染
 8. **信息来源多样性**：确保内容引用了至少 3 种不同来源（通用搜索、学术论文、预印本、LLM知识库）
+9. **图表可视化**：在关键理解点添加 Mermaid 流程图或思维导图，但不要过度可视化
 
-在内容末尾，建议1-2个图表（可选）：
-CHART_JSON: {"charts":[{"type":"mermaid|infographic|table","description":"what the chart shows"}]}`,
+在内容末尾，可选添加0-2个图表：
+CHART_JSON: {"charts":[{"type":"mermaid|mindmap|ai-image","description":"图表描述","mermaidCode":"mermaid代码(仅type为mermaid/mindmap时)"}]}`,
     },
     {
       role: "user",
