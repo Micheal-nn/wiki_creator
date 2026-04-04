@@ -65,7 +65,7 @@ export class TavilyAdapter implements SearchAdapter {
       api_key: this.apiKey,
       query,
       search_depth: "advanced",
-      max_results: 10,
+      max_results: 20,
       include_answer: false,
     });
 

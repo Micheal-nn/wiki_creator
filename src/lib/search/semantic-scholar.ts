@@ -25,7 +25,7 @@ export class SemanticScholarAdapter implements SearchAdapter {
     try {
       const params = new URLSearchParams({
         query,
-        limit: "10",
+        limit: "20",
         fields: "title,abstract,citationCount,authors,url,year",
       });
 

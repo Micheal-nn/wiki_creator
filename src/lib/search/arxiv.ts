@@ -55,7 +55,7 @@ export class ArxivAdapter implements SearchAdapter {
       const params = new URLSearchParams({
         search_query: `all:${query}`,
         start: "0",
-        max_results: "10",
+        max_results: "20",
         sortBy: "relevance",
         sortOrder: "descending",
       });
