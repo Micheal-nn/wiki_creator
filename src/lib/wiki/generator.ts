@@ -64,7 +64,7 @@ export async function generateWiki(
 
     // Run LLM orchestration pipeline
     const orchestrator = new Orchestrator(apiKey, onProgress);
-    const { materialPackage, sections, knowledgeType } =
+    const { materialPackage, sections, knowledgeType, header, footer } =
       await orchestrator.orchestrate(topic, searchResultList);
 
     // Save sections to DB
@@ -80,8 +80,8 @@ export async function generateWiki(
       });
     }
 
-    // Combine into full markdown
-    const fullMarkdown = sectionsToMarkdown(sections);
+    // Combine into full markdown with header and footer
+    const fullMarkdown = sectionsToMarkdown(sections, topic, header, footer);
 
     // Update wiki record
     await db
@@ -195,7 +195,8 @@ export async function regenerateSection(
       layer: s.layer,
       title: s.title,
       markdown: s.markdown ?? "",
-    }))
+    })),
+    wiki.topic
   );
 
   await db
@@ -210,7 +211,10 @@ export async function regenerateSection(
  * Combine wiki sections into a single markdown document.
  */
 export function sectionsToMarkdown(
-  sections: { layer: number; title: string; markdown: string }[]
+  sections: { layer: number; title: string; markdown: string }[],
+  topic?: string,
+  header?: string,
+  footer?: string
 ): string {
   const layerNames: Record<number, string> = {
     1: "直觉层",
@@ -219,13 +223,45 @@ export function sectionsToMarkdown(
     4: "应用层",
   };
 
-  return sections
+  const layerIcons: Record<number, string> = {
+    1: "💡",
+    2: "🔬",
+    3: "🧠",
+    4: "🚀",
+  };
+
+  const bodyContent = sections
     .sort((a, b) => a.layer - b.layer)
     .map((section) => {
       const layerName = layerNames[section.layer] || `Layer ${section.layer}`;
-      return `## ${layerName}: ${section.title}\n\n${section.markdown}`;
+      const icon = layerIcons[section.layer] || "📄";
+      return `---\n\n## ${icon} ${layerName}\n\n### ${section.title}\n\n${section.markdown}`;
     })
-    .join("\n\n---\n\n");
+    .join("\n\n");
+
+  // Assemble full document
+  let fullDocument = "";
+
+  // Add header if provided
+  if (header) {
+    fullDocument += header + "\n\n";
+  } else if (topic) {
+    // Fallback header
+    fullDocument += `# ${topic}\n\n## 【Wiki目录导航】\n\n- [直觉层](#直觉层)\n- [原理层](#原理层)\n- [深入层](#深入层)\n- [应用层](#应用层)\n\n`;
+  }
+
+  // Add body content
+  fullDocument += bodyContent;
+
+  // Add footer if provided
+  if (footer) {
+    fullDocument += "\n\n---\n\n" + footer;
+  } else {
+    // Fallback footer
+    fullDocument += `\n\n---\n\n## 【核心知识点总结】\n\n本文档基于金字塔原理、费曼学习法、第一性原理构建，帮助不同层级的读者掌握「${topic || "该知识点"}」的核心内容。`;
+  }
+
+  return fullDocument;
 }
 
 /**

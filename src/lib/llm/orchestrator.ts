@@ -254,6 +254,36 @@ export class Orchestrator {
     };
   }
 
+  async generateWikiHeader(topic: string): Promise<string> {
+    this.progress("generating", "生成文档头部...", 45);
+    const response = await chatCompletion(
+      this.apiKey,
+      prompts.wikiHeaderGeneration(topic),
+      { maxTokens: 1024 }
+    );
+    return response.content;
+  }
+
+  async generateWikiFooter(
+    topic: string,
+    sections: WikiSection[]
+  ): Promise<string> {
+    this.progress("generating", "生成总结和参考资料...", 95);
+    const response = await chatCompletion(
+      this.apiKey,
+      prompts.wikiFooterGeneration(
+        topic,
+        sections.map((s) => ({
+          layer: s.layer,
+          title: s.title,
+          content: s.markdown || "",
+        }))
+      ),
+      { maxTokens: 2048 }
+    );
+    return response.content;
+  }
+
   async orchestrate(
     topic: string,
     searchResults: SearchResult[]
@@ -261,6 +291,8 @@ export class Orchestrator {
     materialPackage: MaterialPackage;
     sections: WikiSection[];
     knowledgeType: KnowledgeType;
+    header?: string;
+    footer?: string;
   }> {
     // 1. Filter results
     const filtered = await this.filterResults(topic, searchResults);
@@ -282,7 +314,10 @@ export class Orchestrator {
       materialsStr
     );
 
-    // 5. Generate each section
+    // 5. Generate header with TOC
+    const header = await this.generateWikiHeader(topic);
+
+    // 6. Generate each section
     const sections: WikiSection[] = [];
     for (const section of outline) {
       const wikiSection = await this.generateSection(
@@ -294,7 +329,10 @@ export class Orchestrator {
       sections.push(wikiSection);
     }
 
+    // 7. Generate footer with summary and references
+    const footer = await this.generateWikiFooter(topic, sections);
+
     this.progress("done", "生成完成！", 100);
-    return { materialPackage, sections, knowledgeType };
+    return { materialPackage, sections, knowledgeType, header, footer };
   }
 }

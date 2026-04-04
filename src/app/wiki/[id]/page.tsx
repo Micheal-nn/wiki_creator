@@ -19,6 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 
 interface WikiSection {
   id: string;
@@ -78,42 +79,6 @@ const LAYER_CONFIG: Record<
     desc: "怎么用",
   },
 };
-
-function MarkdownRenderer({ content }: { content: string }) {
-  // Simple markdown rendering — headings, bold, code, lists, math
-  const lines = content.split("\n");
-  const html = lines
-    .map((line) => {
-      if (line.startsWith("### "))
-        return `<h3 class="text-lg font-semibold mt-4 mb-2 text-gray-900">${line.slice(4)}</h3>`;
-      if (line.startsWith("## "))
-        return `<h2 class="text-xl font-bold mt-6 mb-3 text-gray-900">${line.slice(3)}</h2>`;
-      if (line.startsWith("# "))
-        return `<h1 class="text-2xl font-bold mt-6 mb-3 text-gray-900">${line.slice(2)}</h1>`;
-      if (line.startsWith("- "))
-        return `<li class="ml-4 text-gray-800">${line.slice(2)}</li>`;
-      if (line.startsWith("```"))
-        return `<pre class="bg-gray-100 p-3 rounded my-2 text-sm overflow-x-auto text-gray-800"><code>${line.slice(3)}</code></pre>`;
-      if (line.startsWith("<!-- fold:start -->"))
-        return `<details class="my-2"><summary class="cursor-pointer text-sm text-gray-600">点击展开详细内容</summary><div class="mt-2">`;
-      if (line.startsWith("<!-- fold:end -->"))
-        return `</div></details>`;
-      if (line.trim() === "") return `<br/>`;
-      
-      // Handle LaTeX math formulas: $...$ and $$...$$
-      let formatted = line
-        // Inline math: $...$ -> convert to styled span
-        .replace(/\$([^\$]+)\$/g, '<span class="font-mono text-blue-600 bg-blue-50 px-1 rounded">$1</span>')
-        // Block math: $$...$$ -> convert to styled div
-        .replace(/\$\$([^\$]+)\$\$/g, '<div class="font-mono text-blue-700 bg-blue-50 p-2 rounded my-2 text-center">$1</div>')
-        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-        .replace(/`(.+?)`/g, "<code class='bg-gray-200 px-1 rounded text-sm text-gray-800'>$1</code>");
-      return `<p class="my-1 text-gray-800">${formatted}</p>`;
-    })
-    .join("\n");
-
-  return <div className="text-gray-800" dangerouslySetInnerHTML={{ __html: html }} />;
-}
 
 function SectionBlock({
   section,
