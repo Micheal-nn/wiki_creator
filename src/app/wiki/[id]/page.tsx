@@ -123,7 +123,7 @@ function SectionBlock({
   onRegenerate: (id: string) => void;
 }) {
   const config = LAYER_CONFIG[section.layer] || LAYER_CONFIG[1];
-  const [collapsed, setCollapsed] = useState(section.layer === 3);
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <div className="mb-8" id={`section-${section.id}`}>
@@ -141,15 +141,13 @@ function SectionBlock({
         >
           重新生成
         </Button>
-        {section.layer === 3 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {collapsed ? "展开" : "收起"}
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setCollapsed(!collapsed)}
+        >
+          {collapsed ? "展开" : "收起"}
+        </Button>
       </div>
 
       {!collapsed && section.markdown && (
