@@ -41,7 +41,62 @@ function MermaidBlock({ code }: { code: string }) {
     // 2. Escape quotes inside node labels
     sanitized = sanitized.replace(/\[([^\]]*)"/g, '[$1\\"');
     
-    // 3. Remove trailing whitespace on lines
+    // 3. Replace vertical bar characters (Mermaid reserved) with safe alternatives
+    // Quantum ket notation: |ψ⟩, |x⟩, |Φ⁺⟩, |00⟩, |11⟩, etc.
+    sanitized = sanitized.replace(/\|([a-zA-Zα-ωΑ-Ω0-9⁺⁻²³₀₁₂₃₄₅₆₇₈₉⟩]+)⟩/g, '"$1态"');
+    sanitized = sanitized.replace(/\|([^\s\|⟩]+)\⟩/g, '"$1态"');
+    
+    // 4. Replace remaining standalone vertical bars with safe text
+    // BUT preserve edge label syntax: --> |label| or --- |label|
+    // First, temporarily replace edge label pipes with a placeholder
+    sanitized = sanitized.replace(/-->\s*\|([^|]+)\|/g, '--> __EDGE_LABEL_START__$1__EDGE_LABEL_END__');
+    sanitized = sanitized.replace(/---\s*\|([^|]+)\|/g, '--- __EDGE_LABEL_START__$1__EDGE_LABEL_END__');
+    // Now replace remaining pipes (in node labels) with safe text
+    sanitized = sanitized.replace(/\|/g, '或');
+    // Restore edge label pipes
+    sanitized = sanitized.replace(/__EDGE_LABEL_START__/g, '|');
+    sanitized = sanitized.replace(/__EDGE_LABEL_END__/g, '|');
+    
+    // 5. Replace math symbols with ASCII-safe equivalents
+    const mathSymbolReplacements: Record<string, string> = {
+      '√': 'sqrt',
+      '√2': 'sqrt(2)',
+      'Φ⁺': 'Phi+',
+      'Φ⁻': 'Phi-',
+      'Ψ': 'Psi',
+      'ψ': 'psi',
+      'α': 'alpha',
+      'β': 'beta',
+      'γ': 'gamma',
+      'δ': 'delta',
+      'π': 'pi',
+      '∞': 'infinity',
+      '→': '->',
+      '←': '<-',
+      '↔': '<->',
+      '∑': 'sum',
+      '∫': 'int',
+      '≈': '~=',
+      '≠': '!=',
+      '≤': '<=',
+      '≥': '>=',
+      '×': 'x',
+      '÷': '/',
+      '²': '^2',
+      '³': '^3',
+      '⁺': '+',
+      '⁻': '-',
+      '₀': '_0',
+      '₁': '_1',
+      '₂': '_2',
+      '₃': '_3',
+    };
+    
+    for (const [symbol, replacement] of Object.entries(mathSymbolReplacements)) {
+      sanitized = sanitized.replace(new RegExp(symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replacement);
+    }
+    
+    // 6. Remove trailing whitespace on lines
     sanitized = sanitized.split("\n").map(line => line.trimEnd()).join("\n");
     
     return sanitized;

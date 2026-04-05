@@ -85,6 +85,7 @@ export default function HomePage() {
                   if (data.success && data.data?.id) {
                     setProgressMessage("生成完成！");
                     setProgressPercent(100);
+                    setLoading(false);
                     router.push(`/wiki/${data.data.id}`);
                   } else {
                     setError("生成失败：无效响应");

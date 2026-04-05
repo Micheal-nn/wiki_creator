@@ -71,6 +71,30 @@ function parseJsonResponse<T>(content: string, fallback: T): T {
     console.error("Failed to parse LLM JSON response:", content.slice(0, 500));
   }
 
+  // Strategy 4: Attempt to extract partial content from malformed JSON
+  // This handles truncated responses where JSON is incomplete
+  try {
+    // Try to extract supplement field even from incomplete JSON
+    const supplementMatch = content.match(/"supplement"\s*:\s*"([^"]*(?:\\.[^"\\]*)*?)"/);
+    const blindAreasMatch = content.match(/"blindAreas"\s*:\s*\[([^\]]*)\]/);
+    
+    if (supplementMatch || blindAreasMatch) {
+      const partialResult = { ...fallback } as T;
+      if (supplementMatch) {
+        (partialResult as Record<string, unknown>).supplement = supplementMatch[1] || "";
+      }
+      if (blindAreasMatch) {
+        (partialResult as Record<string, unknown>).blindAreas = blindAreasMatch[1] 
+          ? blindAreasMatch[1].split(',').map(s => s.trim().replace(/"/g, '').replace(/"/g, ''))
+          : [];
+      }
+      console.warn("Using partial JSON extraction as fallback");
+      return partialResult;
+    }
+  } catch {
+    // Silent fail for partial extraction
+  }
+
   return fallback;
 }
 
@@ -155,7 +179,7 @@ export class Orchestrator {
     const response = await chatCompletion(
       this.apiKey,
       prompts.knowledgeFusion(topic, filteredResults, sourceCounts),
-      { maxTokens: 8192, timeout: 120_000 } // Higher token limit and timeout for supplement
+      { maxTokens: 16384, timeout: 180_000 } // Increased token limit for comprehensive knowledge fusion
     );
 
     const fusionResult = parseJsonResponse<{
@@ -244,7 +268,7 @@ export class Orchestrator {
         section.keyPoints,
         materials
       ),
-      { maxTokens: 4096, timeout: 120_000 } // 2 minutes for detailed section generation
+      { maxTokens: 8192, timeout: 180_000 } // Increased token limit for complete section content
     );
 
     const { markdown, charts } = parseSectionResponse(response.content);
@@ -262,7 +286,7 @@ export class Orchestrator {
     const response = await chatCompletion(
       this.apiKey,
       prompts.wikiHeaderGeneration(topic),
-      { maxTokens: 1024 }
+      { maxTokens: 2048 } // Increased for comprehensive header
     );
     return response.content;
   }
@@ -272,7 +296,7 @@ export class Orchestrator {
     sections: WikiSection[]
   ): Promise<string> {
     this.progress("generating", "生成总结和参考资料...", 95);
- const response = await chatCompletion(
+    const response = await chatCompletion(
       this.apiKey,
       prompts.wikiFooterGeneration(
         topic,
@@ -282,7 +306,7 @@ export class Orchestrator {
           content: s.markdown || "",
         }))
       ),
-      { maxTokens: 2048, timeout: 120_000 } // 2 minutes for footer generation
+      { maxTokens: 4096, timeout: 180_000 } // Increased token limit for comprehensive footer
     );
     return response.content;
   }

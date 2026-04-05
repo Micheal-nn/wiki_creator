@@ -92,9 +92,11 @@ const LAYER_CONFIG: Record<
 
 function SectionBlock({
   section,
+  isRegenerating,
   onRegenerate,
 }: {
   section: WikiSection;
+  isRegenerating: boolean;
   onRegenerate: (id: string) => void;
 }) {
   const config = LAYER_CONFIG[section.layer] || LAYER_CONFIG[1];
@@ -113,8 +115,9 @@ function SectionBlock({
           size="sm"
           className="ml-auto"
           onClick={() => onRegenerate(section.id)}
+          disabled={isRegenerating}
         >
-          重新生成
+          {isRegenerating ? "生成中..." : "重新生成"}
         </Button>
         <Button
           variant="ghost"
@@ -486,6 +489,7 @@ export default function WikiEditorPage() {
               <SectionBlock
                 key={section.id}
                 section={section}
+                isRegenerating={regeneratingId === section.id}
                 onRegenerate={handleRegenerate}
               />
             ))}
