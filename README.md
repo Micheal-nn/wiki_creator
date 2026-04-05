@@ -2,6 +2,11 @@
 
 输入任意知识点，自动搜索学术、技术、通用多源信息，结合大模型生成由浅入深的 4 层金字塔结构 Wiki，图文结合深入浅出。
 
+<img width="1906" height="974" alt="image" src="https://github.com/user-attachments/assets/517317fd-5d23-464c-89ec-b2874e6575fd" />
+<img width="3784" height="1951" alt="image-2" src="https://github.com/user-attachments/assets/ac075c37-cea0-4a57-8701-a5144c75c27c" />
+<img width="3805" height="1945" alt="image-1" src="https://github.com/user-attachments/assets/b497f7a8-e3bf-4664-8c68-9ec59e7d13c9" />
+
+
 ## 核心特性
 
 ### 🔍 多源权威信息聚合
