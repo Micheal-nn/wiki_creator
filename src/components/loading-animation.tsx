@@ -14,11 +14,17 @@ export const DEFAULT_LOADING_STEPS = [
 interface LoadingAnimationProps {
   steps?: string[];
   interval?: number;
+  /** External message from SSE progress events */
+  message?: string;
+  /** External progress percentage (0-100) */
+  progress?: number;
 }
 
 export function LoadingAnimation({
   steps = DEFAULT_LOADING_STEPS,
   interval = 4000,
+  message,
+  progress,
 }: LoadingAnimationProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
@@ -36,6 +42,11 @@ export function LoadingAnimation({
     return () => clearInterval(stepTimer);
   }, [steps.length, interval]);
 
+  // Use external message if provided, otherwise use step text
+  const displayText = message || steps[currentStepIndex];
+  // Use external progress if provided (0-100), otherwise undefined for animated bar
+  const progressPercent = progress !== undefined ? progress : undefined;
+
   return (
     <div className="w-full max-w-md mx-auto text-center py-16">
       {/* Icon with pulse */}
@@ -49,16 +60,23 @@ export function LoadingAnimation({
       <div className="h-8 mb-8">
         <p
           className={`text-lg font-medium text-gray-600 transition-all duration-300 ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+            isVisible || message ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
           }`}
         >
-          {steps[currentStepIndex]}
+          {displayText}
         </p>
       </div>
 
-      {/* Animated progress bar */}
+      {/* Progress bar - static if progress provided, animated otherwise */}
       <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden mb-8">
-        <div className="h-full bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 rounded-full animate-progress" />
+        {progressPercent !== undefined ? (
+          <div 
+            className="h-full bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 rounded-full transition-all duration-500"
+            style={{ width: `${progressPercent}%` }}
+          />
+        ) : (
+          <div className="h-full bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 rounded-full animate-progress" />
+        )}
       </div>
 
       {/* Pulsing dots */}

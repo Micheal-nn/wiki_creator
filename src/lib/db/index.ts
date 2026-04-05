@@ -50,6 +50,8 @@ async function initializeDatabase(db: LibSQLDatabase<typeof schema>) {
       content TEXT,
       markdown TEXT,
       sources TEXT,
+      source_metadata TEXT,
+      source_warnings TEXT DEFAULT '[]',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`,

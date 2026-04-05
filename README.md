@@ -135,6 +135,47 @@ npm run dev
 
 ---
 
+## 部署到 Vercel
+
+### 一键部署
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/wiki-creator)
+
+### 手动部署步骤
+
+1. **Fork 或 Clone 本项目到 GitHub**
+
+2. **在 Vercel 创建新项目**
+   - 访问 [vercel.com](https://vercel.com)
+   - 点击 "New Project"
+   - 导入你的 GitHub 仓库
+
+3. **配置环境变量**
+   
+   在 Vercel 项目设置中添加环境变量：
+   
+   | 变量名 | 说明 | 必需 |
+   |--------|------|------|
+   | `TAVILY_API_KEY` | Tavily 搜索 API | ✅ |
+   | `GLM5_API_KEY` | 智谱 AI API Key | ✅ |
+   | `GLM5_BASE_URL` | GLM5 API 地址 | ❌ |
+   
+   或者在用户首次访问时通过网页设置页面输入。
+
+4. **部署**
+   - Vercel 会自动检测 Next.js 并部署
+   - 部署完成后访问分配的域名即可使用
+
+### 注意事项
+
+- **数据库**: Vercel 使用临时文件系统，SQLite 数据库会在每次部署时重置。如需持久化数据，建议：
+  - 迁移到 Vercel Postgres / Neon / PlanetScale
+  - 或使用本地部署方案
+  
+- **API 超时**: Wiki 生成使用 SSE 流式响应，支持长时间运行（最长 5 分钟）
+
+---
+
 ## 数据源说明
 
 Wiki Creator 使用 4 种数据源进行知识搜索：

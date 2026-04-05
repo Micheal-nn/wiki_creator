@@ -1,19 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { LoadingAnimation } from "@/components/loading-animation";
+import type { GenerationProgress } from "@/types";
 
 export default function HomePage() {
   const router = useRouter();
   const [topic, setTopic] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progressMessage, setProgressMessage] = useState<string | undefined>();
+  const [progressPercent, setProgressPercent] = useState<number | undefined>();
 
-  async function handleGenerate() {
+  const handleGenerate = useCallback(async () => {
     if (!topic.trim()) {
       setError("请输入知识点");
       return;
@@ -21,27 +24,93 @@ export default function HomePage() {
 
     setLoading(true);
     setError(null);
+    setProgressMessage(undefined);
+    setProgressPercent(undefined);
 
     try {
-      const res = await fetch("/api/generate", {
+      const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: topic.trim() }),
       });
 
-      const data = await res.json();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
-      if (data.success && data.data?.id) {
-        router.push(`/wiki/${data.data.id}`);
-      } else {
-        setError(data.error || "生成失败，请重试");
-        setLoading(false);
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("无法读取响应流");
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse SSE events from buffer
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+        let eventType = "";
+        let eventData = "";
+
+        for (const line of lines) {
+          if (line.startsWith("event:")) {
+            eventType = line.slice(6).trim();
+          } else if (line.startsWith("data:")) {
+            eventData = line.slice(5).trim();
+          } else if (line === "" && eventType && eventData) {
+            // Empty line marks end of event
+            try {
+              const data = JSON.parse(eventData);
+
+              switch (eventType) {
+                case "start":
+                  setProgressMessage(`开始生成: ${data.topic}`);
+                  setProgressPercent(0);
+                  break;
+
+                case "progress":
+                  const progress = data as GenerationProgress;
+                  setProgressMessage(progress.message);
+                  setProgressPercent(progress.progress);
+                  break;
+
+                case "complete":
+                  if (data.success && data.data?.id) {
+                    setProgressMessage("生成完成！");
+                    setProgressPercent(100);
+                    router.push(`/wiki/${data.data.id}`);
+                  } else {
+                    setError("生成失败：无效响应");
+                    setLoading(false);
+                  }
+                  break;
+
+                case "error":
+                  setError(data.error || "生成失败，请重试");
+                  setLoading(false);
+                  break;
+              }
+            } catch (parseError) {
+              console.error("Failed to parse SSE event:", parseError, eventData);
+            }
+
+            eventType = "";
+            eventData = "";
+          }
+        }
       }
     } catch (err) {
       setError("网络错误: " + String(err));
       setLoading(false);
     }
-  }
+  }, [topic, router]);
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -56,7 +125,7 @@ export default function HomePage() {
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center px-6">
         {loading ? (
-          <LoadingAnimation />
+          <LoadingAnimation message={progressMessage} progress={progressPercent} />
         ) : (
           <Card className="w-full max-w-2xl">
             <CardHeader className="text-center">
