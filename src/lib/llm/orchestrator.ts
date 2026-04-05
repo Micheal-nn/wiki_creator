@@ -271,7 +271,7 @@ export class Orchestrator {
     sections: WikiSection[]
   ): Promise<string> {
     this.progress("generating", "生成总结和参考资料...", 95);
-    const response = await chatCompletion(
+ const response = await chatCompletion(
       this.apiKey,
       prompts.wikiFooterGeneration(
         topic,
@@ -281,7 +281,7 @@ export class Orchestrator {
           content: s.markdown || "",
         }))
       ),
-      { maxTokens: 2048 }
+      { maxTokens: 2048, timeout: 120_000 } // 2 minutes for footer generation
     );
     return response.content;
   }
