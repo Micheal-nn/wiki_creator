@@ -37,6 +37,16 @@ export const wikis = sqliteTable("wikis", {
       credibility: number;
     }[]
   >(),
+  sourceMetadata: text("source_metadata", { mode: "json" }).$type<
+    {
+      sourceType: string;
+      sourceName: string;
+      count: number;
+      success: boolean;
+      error?: string;
+    }[]
+  >(),
+  sourceWarnings: text("source_warnings", { mode: "json" }).$type<string[]>().default([]),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

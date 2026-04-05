@@ -2,7 +2,7 @@ import type { CredibilityScore, InfoType } from "@/types";
 import type { SearchAdapter, RawSearchResult } from "./types";
 
 const GLM5_API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 60_000;
 
 export class LLMAdapter implements SearchAdapter {
   name = "GLM5 知识库";
@@ -77,10 +77,15 @@ export class LLMAdapter implements SearchAdapter {
         },
       ];
     } catch (error) {
-      console.error("[LLM] Knowledge query failed:", error);
+      // Check if this is a timeout error
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn("[LLM] Knowledge query timeout after 30s");
+      } else {
+        console.error("[LLM] Knowledge query failed:", error);
+      }
       return [];
     } finally {
       clearTimeout(timer);
     }
-  }
+}
 }

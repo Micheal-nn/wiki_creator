@@ -42,28 +42,33 @@ export async function generateWiki(
   try {
     onProgress?.({ stage: "searching", message: "正在搜索相关信息...", progress: 5 });
 
-    // Run aggregated search (pass both Tavily and GLM5 keys)
+    // Run aggregated search with multi-source bucket logic
     const searchResult = await aggregatedSearch(topic, tavilyApiKey, apiKey);
     const searchResultList = searchResult.results;
 
-    // Log source diversity info
-    console.log("[Generator] Sources used:", searchResult.sourcesUsed);
-    console.log("[Generator] Source counts:", searchResult.sourceCounts);
+    // Build detailed source breakdown message
+    const bucketSummary = Object.entries(searchResult.sourceBuckets)
+      .map(([key, bucket]) => `${bucket.sourceName}: ${bucket.results.length}条`)
+      .join(' | ');
     
-    if (searchResult.diversityWarning) {
-      console.warn("[Generator]", searchResult.diversityWarning);
-      onProgress?.({ 
-        stage: "searching", 
-        message: `搜索完成（${searchResult.sourcesUsed.length}/4 源可用）`, 
-        progress: 15 
-      });
-    } else {
-      onProgress?.({ 
-        stage: "searching", 
-        message: `搜索完成，从 ${searchResult.sourcesUsed.length} 个来源找到 ${searchResultList.length} 条结果`, 
-        progress: 15 
-      });
+    // Build warning message if any
+    const warningMsg = searchResult.warnings.length > 0 
+      ? `\n⚠️ ${searchResult.warnings.join('\n⚠️ ')}`
+      : '';
+    
+    console.log("[Generator] Source breakdown:", bucketSummary);
+    console.log("[Generator] Total results:", searchResult.totalUsed);
+    
+    if (searchResult.warnings.length > 0) {
+      console.warn("[Generator] Source warnings:", searchResult.warnings);
     }
+    
+    // Enhanced progress message with source breakdown
+    onProgress?.({ 
+      stage: "searching", 
+      message: `搜索完成 | ${bucketSummary}${warningMsg}`, 
+      progress: 15 
+    });
 
     // Save search results to DB
     for (const result of searchResultList) {
@@ -101,7 +106,15 @@ export async function generateWiki(
     // Combine into full markdown with header and footer
     const fullMarkdown = sectionsToMarkdown(sections, topic, header, footer);
 
-    // Update wiki record
+    // Update wiki record with enhanced source metadata
+    const sourceMetadata = Object.entries(searchResult.sourceBuckets).map(([key, bucket]) => ({
+      sourceType: bucket.sourceType,
+      sourceName: bucket.sourceName,
+      count: bucket.results.length,
+      success: bucket.success,
+      error: bucket.error,
+    }));
+    
     await db
       .update(wikis)
       .set({
@@ -115,6 +128,8 @@ export async function generateWiki(
           title: r.title,
           credibility: r.credibility,
         })),
+        sourceMetadata,
+        sourceWarnings: searchResult.warnings,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(wikis.id, wikiId));

@@ -1,4 +1,4 @@
-import type { SourceType, InfoType, CredibilityScore } from "@/types";
+import type { SourceType, InfoType, CredibilityScore, SearchResult } from "@/types";
 
 export interface SearchAdapter {
   name: string;
@@ -15,24 +15,34 @@ export interface RawSearchResult {
   metadata?: Record<string, unknown>;
 }
 
-// Per-source results bucket for multi-source aggregation
+// Per-source result bucket for transparency
 export interface SourceBucket {
-  // The source type this bucket represents (e.g. "general", "academic", etc.)
-  source: SourceType;
-  // The list of raw search results from this source
+  sourceType: SourceType;
+  sourceName: string;
   results: RawSearchResult[];
-  // Optional total count of results from this source if the API provides it
-  total?: number;
+  success: boolean;
+  error?: string;
 }
 
-// Aggregated search result structure that combines multiple SourceBuckets
+// Enhanced aggregation result with per-source breakdown
 export interface AggregatedSearchResult {
-  // Original query for which results were gathered
-  query: string;
-  // Total number of results across all sources (if available)
-  total?: number;
-  // Buckets of per-source results
-  buckets: SourceBucket[];
-  // Optional best/featured result across buckets
-  topResult?: RawSearchResult;
+  // Final merged results (max 80, top 20 per source)
+  results: SearchResult[];
+  
+  // Per-source breakdown for UI transparency
+  sourceBuckets: {
+    tavily: SourceBucket;
+    semanticScholar: SourceBucket;
+    arxiv: SourceBucket;
+    llm: SourceBucket;
+  };
+  
+  // Summary counts per source type
+  sourceCounts: Record<string, number>;
+  
+  // Total results used (after dedup)
+  totalUsed: number;
+  
+  // Warnings for empty/failed sources
+  warnings: string[];
 }

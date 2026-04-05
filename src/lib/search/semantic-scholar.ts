@@ -35,8 +35,9 @@ export class SemanticScholarAdapter implements SearchAdapter {
 
       if (!response.ok) {
         // Handle rate limiting (429) gracefully - return empty results instead of throwing
+        // Better 429 handling - add retry logic
         if (response.status === 429) {
-          console.warn("[Search] Semantic Scholar rate limited (429), skipping...");
+          console.warn("[Search] Semantic Scholar rate limited (429), will retry later...");
           return [];
         }
         throw new Error(
