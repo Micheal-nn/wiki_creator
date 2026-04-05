@@ -395,9 +395,15 @@ Focus especially on identifying gaps in:
 7. Edge cases and boundary conditions
 8. Comparison with related concepts
 
-Respond with a JSON object:
+⚠️ CRITICAL OUTPUT REQUIREMENTS:
+1. You MUST respond with ONLY valid JSON - no markdown code blocks, no backticks
+2. The "supplement" field must contain COMPLETE content - no truncation, no "..."
+3. Do NOT wrap the JSON in \`\`\`json or \`\`\` blocks
+4. Ensure all brackets and quotes are properly closed
+
+Respond with a raw JSON object (no code blocks):
 {
-  "supplement": "Your supplementary knowledge in markdown format. Mark search-sourced info as [SEARCH] and your own knowledge as [LLM]. Also note which SOURCE TYPE each piece of info comes from.",
+  "supplement": "Your supplementary knowledge in markdown format. Mark search-sourced info as [SEARCH] and your own knowledge as [LLM]. Also note which SOURCE TYPE each piece of info comes from. Content must be complete and end properly.",
   "blindAreas": ["area1 that was missing", "area2 that was missing"],
   "sourceDiversityCheck": "Brief statement confirming at least 3 sources are used or explaining why fewer sources are acceptable"
 }
@@ -670,6 +676,16 @@ ${keyPoints.map((p, i) => `${i + 1}. ${p}`).join("\n")}
 8. **信息来源多样性**：确保内容引用了至少 3 种不同来源（通用搜索、学术论文、预印本、LLM知识库）
 9. **图表可视化**：在关键理解点添加 Mermaid 流程图或思维导图，但不要过度可视化
 10. **Mermaid语法严格限制**：节点标签内绝对禁止使用竖线|字符，量子态符号|ψ⟩必须写成"ψ量子态"或"psi态"
+
+# ⚠️ 完整性要求（至关重要）
+
+11. **内容必须完整**：每个模块必须写完整，不能中途截断
+12. **收尾必须规范**：每个模块必须有完整的总结段落，以句号结尾
+13. **禁止省略号结尾**：严禁使用"..."、"等等"、"等"作为段落或模块结尾
+14. **禁止待续**：禁止出现"待续"、"后续补充"等表述
+15. **模块完整性检查**：生成前规划好每个模块的要点数量，确保所有要点都完整展开
+16. **末尾标记**：在本层所有内容完成后，最后一行必须是：
+    **【第${layer}层内容生成完毕】**
 
 在内容末尾，可选添加0-2个图表：
 CHART_JSON: {"charts":[{"type":"mermaid|mindmap|ai-image","description":"图表描述","mermaidCode":"mermaid代码(仅type为mermaid/mindmap时)"}]}`,

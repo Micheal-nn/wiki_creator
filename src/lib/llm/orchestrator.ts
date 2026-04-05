@@ -154,7 +154,8 @@ export class Orchestrator {
     this.progress("fusing", "融合 LLM 知识...", 35);
     const response = await chatCompletion(
       this.apiKey,
-      prompts.knowledgeFusion(topic, filteredResults, sourceCounts)
+      prompts.knowledgeFusion(topic, filteredResults, sourceCounts),
+      { maxTokens: 8192, timeout: 120_000 } // Higher token limit and timeout for supplement
     );
 
     const fusionResult = parseJsonResponse<{
