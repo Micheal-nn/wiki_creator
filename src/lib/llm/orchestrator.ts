@@ -127,7 +127,8 @@ export class Orchestrator {
     this.progress("filtering", "筛选搜索结果...", 20);
     const response = await chatCompletion(
       this.apiKey,
-      prompts.searchResultFilter(topic, results)
+      prompts.searchResultFilter(topic, results),
+      { timeout: 120_000 } // 2 minutes for large result sets
     );
 
     const filterResults = parseJsonResponse<
@@ -242,7 +243,7 @@ export class Orchestrator {
         section.keyPoints,
         materials
       ),
-      { maxTokens: 4096 }
+      { maxTokens: 4096, timeout: 120_000 } // 2 minutes for detailed section generation
     );
 
     const { markdown, charts } = parseSectionResponse(response.content);

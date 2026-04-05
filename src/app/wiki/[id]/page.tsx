@@ -29,6 +29,14 @@ interface WikiSection {
   order: number;
 }
 
+interface SourceMetadata {
+  sourceType: string;
+  sourceName: string;
+  count: number;
+  success: boolean;
+  error?: string;
+}
+
 interface WikiData {
   id: string;
   topic: string;
@@ -37,6 +45,8 @@ interface WikiData {
   markdown: string | null;
   createdAt: string;
   sections: WikiSection[];
+  sourceMetadata?: SourceMetadata[];
+  sourceWarnings?: string[];
 }
 
 interface SourceData {
@@ -124,7 +134,23 @@ function SectionBlock({
   );
 }
 
-function SourcesPanel({ wikiId }: { wikiId: string }) {
+// Define all 4 expected sources
+const EXPECTED_SOURCES = [
+  { type: 'academic', name: 'Semantic Scholar', key: 'semanticScholar' },
+  { type: 'academic', name: 'arXiv', key: 'arxiv' },
+  { type: 'general', name: 'Tavily', key: 'tavily' },
+  { type: 'llm', name: 'GLM5 知识库', key: 'llm' },
+] as const;
+
+function SourcesPanel({ 
+  wikiId, 
+  sourceMetadata,
+  sourceWarnings 
+}: { 
+  wikiId: string;
+  sourceMetadata?: SourceMetadata[];
+  sourceWarnings?: string[];
+}) {
   const [sources, setSources] = useState<SourceData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -147,71 +173,125 @@ function SourcesPanel({ wikiId }: { wikiId: string }) {
 
   if (loading) return <div className="p-4">加载中...</div>;
 
+  // Group sources by type
   const grouped = {
     academic: sources.filter((s) => s.sourceType === "academic"),
-    technical: sources.filter((s) => s.sourceType === "technical"),
     general: sources.filter((s) => s.sourceType === "general"),
     llm: sources.filter((s) => s.sourceType === "llm"),
   };
 
+  // Build source status map from metadata
+  const sourceStatusMap = new Map<string, { count: number; success: boolean; error?: string }>();
+  if (sourceMetadata) {
+    for (const meta of sourceMetadata) {
+      sourceStatusMap.set(meta.sourceName, { count: meta.count, success: meta.success, error: meta.error });
+    }
+  }
+
+  // Get label for source type
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case "academic": return "学术来源";
+      case "general": return "通用来源";
+      case "llm": return "LLM 知识库";
+      default: return type;
+    }
+  };
+
   return (
     <ScrollArea className="h-[80vh]">
-      <div className="p-4 space-y-6">
-        {(["academic", "technical", "general", "llm"] as const).map((type) => {
-          const items = grouped[type];
-          if (items.length === 0) return null;
-          const label =
-            type === "academic"
-              ? "学术来源"
-              : type === "technical"
-                ? "技术来源"
-                : type === "llm"
-                  ? "LLM 知识库"
-                  : "通用来源";
+      <div className="p-4 space-y-4">
+        {/* Display warnings at top */}
+        {sourceWarnings && sourceWarnings.length > 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+            <h4 className="font-medium text-yellow-800 mb-2">⚠️ 数据源提示</h4>
+            <ul className="text-sm text-yellow-700 space-y-1">
+              {sourceWarnings.map((warning, i) => (
+                <li key={i}>• {warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
+        {/* Display sources by type - show all 4 categories */}
+        {(["academic", "general", "llm"] as const).map((type) => {
+          const items = grouped[type];
+          const typeLabel = getTypeLabel(type);
+          
+          // Find metadata for sources of this type
+          const relevantMetadata = sourceMetadata?.filter(m => m.sourceType === type) || [];
+          
           return (
-            <div key={type}>
-              <h3 className="font-semibold mb-2">
-                {label} ({items.length})
+            <div key={type} className="border rounded-lg p-3">
+              <h3 className="font-semibold mb-2 text-sm">
+                {typeLabel}
+                <span className="text-muted-foreground font-normal ml-1">
+                  ({items.length} 条)
+                </span>
               </h3>
-              <div className="space-y-2">
-                {items.map((source) => (
-                  <div key={source.id} className="border rounded p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`w-2 h-2 rounded-full ${credibilityColor(source.credibility)}`}
-                      />
-                      <span className="text-sm font-medium">
-                        {source.title}
-                      </span>
+              
+              {items.length > 0 ? (
+                <div className="space-y-2">
+                  {items.map((source) => (
+                    <div key={source.id} className="border rounded p-2 bg-gray-50">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className={`w-2 h-2 rounded-full ${credibilityColor(source.credibility)}`}
+                        />
+                        <span className="text-sm font-medium truncate flex-1">
+                          {source.title}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-1">
+                        {source.snippet}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {source.sourceName}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          可信度: {source.credibility}/5
+                        </span>
+                        {source.url && !source.url.startsWith('llm://') && (
+                          <a
+                            href={source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-500 hover:underline ml-auto"
+                          >
+                            查看
+                          </a>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {source.snippet}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs">
-                        {source.sourceName}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        可信度: {source.credibility}/5
-                      </span>
-                      {source.url && (
-                        <a
-                          href={source.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-500 hover:underline ml-auto"
-                        >
-                          查看原文
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                // Show empty state with reason
+                <div className="text-sm text-muted-foreground py-2">
+                  {relevantMetadata.length > 0 ? (
+                    relevantMetadata.map((meta, i) => (
+                      <div key={i} className="flex items-center gap-2 text-orange-600">
+                        <span>⚠️</span>
+                        <span>{meta.sourceName}: {meta.error || '无相关结果'}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-orange-600">⚠️ 无数据源信息</span>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
+
+        {/* Source summary */}
+        {sourceMetadata && (
+          <div className="text-xs text-muted-foreground border-t pt-3 mt-3">
+            <p>共 {sourceMetadata.reduce((sum, m) => sum + m.count, 0)} 条来源，
+               {sourceMetadata.filter(m => m.success && m.count > 0).length}/4 个数据源有效</p>
+          </div>
+        )}
       </div>
     </ScrollArea>
   );
@@ -350,7 +430,11 @@ export default function WikiEditorPage() {
             <SheetHeader>
               <SheetTitle>信息来源</SheetTitle>
             </SheetHeader>
-            <SourcesPanel wikiId={wikiId} />
+            <SourcesPanel 
+              wikiId={wikiId} 
+              sourceMetadata={wiki.sourceMetadata}
+              sourceWarnings={wiki.sourceWarnings}
+            />
           </SheetContent>
         </Sheet>
 
@@ -397,7 +481,7 @@ export default function WikiEditorPage() {
 
         {/* Content area */}
         <ScrollArea className="flex-1">
-          <div className="max-w-3xl mx-auto py-8 px-6">
+          <div className="max-w-5xl mx-auto py-8 px-8">
             {sortedSections.map((section) => (
               <SectionBlock
                 key={section.id}

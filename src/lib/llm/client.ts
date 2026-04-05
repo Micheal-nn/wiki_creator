@@ -10,6 +10,7 @@ export interface ChatCompletionOptions {
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  timeout?: number; // in milliseconds, default 60000
 }
 
 export interface ChatCompletionResponse {
@@ -27,7 +28,8 @@ export async function chatCompletion(
   options?: ChatCompletionOptions
 ): Promise<ChatCompletionResponse> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 60_000);
+  const timeout = options?.timeout ?? 60_000;
+  const timer = setTimeout(() => controller.abort(), timeout);
 
   try {
     const response = await fetch(`${GLM5_BASE_URL}/chat/completions`, {
