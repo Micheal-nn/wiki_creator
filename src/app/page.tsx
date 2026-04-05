@@ -97,22 +97,42 @@ export default function HomePage() {
               )}
 
               {/* Feature hints */}
-              <div className="grid grid-cols-2 gap-3 mt-6 pt-6 border-t">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>🔍</span>
-                  <span>多源搜索聚合</span>
+              <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <span>🔍</span>
+                    <span>多源权威聚合</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    4 种数据源并行，最多 80 条参考来源，按可信度排序
+                  </p>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>🧠</span>
-                  <span>智能 LLM 编排</span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <span>🧠</span>
+                    <span>智能知识分类</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    自动识别知识点类型，针对性生成内容
+                  </p>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>📊</span>
-                  <span>图表可视化</span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <span>📊</span>
+                    <span>Mermaid 图表</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    智能生成流程图、思维导图，可视化知识结构
+                  </p>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>📝</span>
-                  <span>4 层金字塔结构</span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <span>📝</span>
+                    <span>4 层金字塔结构</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    直觉层 → 原理层 → 深入层 → 应用层
+                  </p>
                 </div>
               </div>
             </CardContent>
