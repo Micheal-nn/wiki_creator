@@ -6,14 +6,20 @@ import fs from "fs";
 import { sql } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 
-const DB_PATH =
-  process.env.DATABASE_PATH ||
-  path.join(process.cwd(), "data", "wiki-creator.db");
+// Vercel 文件系统只读，使用 /tmp 目录
+const DB_PATH = process.env.DATABASE_PATH || 
+  (process.env.VERCEL ? "/tmp/wiki-creator.db" : path.join(process.cwd(), "data", "wiki-creator.db"));
 
 function ensureDataDir() {
   const dir = path.dirname(DB_PATH);
+  // /tmp 目录在 Vercel 上总是存在
   if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch (error) {
+      // Vercel /tmp 目录可能已存在，忽略错误
+      console.warn("Could not create data directory:", error);
+    }
   }
 }
 
